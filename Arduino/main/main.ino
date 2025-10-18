@@ -1,19 +1,19 @@
-#i#include <AccelStepper.h>
+#include <AccelStepper.h>
 
 // Define pins
 #define microPin1 2
 #define microPin2 3
-#define microPin4 4
+#define microPin3 4
 
-#define dirPin_one 2
-#define stepPin_one 3
+#define stepPin_one 8
+#define dirPin_one 9
 
-#define dirPin_two 4
-#define stepPin_two 5
+#define stepPin_two 10
+#define dirPin_two 11
 
 unsigned long steps = 3000;
 
-# stepper accel objs
+// stepper accel objs
 AccelStepper stepper_one(AccelStepper::DRIVER, stepPin_one, dirPin_one);
 AccelStepper stepper_two(AccelStepper::DRIVER, stepPin_two, dirPin_two);
 
@@ -57,15 +57,17 @@ void setup() {
 
 void loop() {
   // Run the stepper (this must be called frequently)
+   // Run both steppers
   stepper_one.run();
   stepper_two.run();
   
-  stepper_one.setSpeed(10000);
-  stepper_two.setSpeed(10000);
-
-  stepper_one.moveTo(5 * steps);
-  stepper_two.moveTo(5 * steps);
-  delay(500);
-
+  // Check if movements are complete and start new ones
+  if (stepper_one.distanceToGo() == 0) {
+    stepper_one.moveTo(-stepper_one.currentPosition());
   }
+  
+  if (stepper_two.distanceToGo() == 0) {
+    stepper_two.moveTo(-stepper_two.currentPosition());
+  }
+
 }
