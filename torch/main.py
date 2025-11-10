@@ -114,10 +114,17 @@ def main():
             if frame_left is not None and frame_right is not None:
                 # Compute time difference
                 dt = abs(ts_left - ts_right)
+                    
 
+                f_left = cv.cvtColor(frame_left, cv.COLOR_BGR2RGB)
+                f_right = cv.cvtColor(frame_right, cv.COLOR_BGR2RGB)
+                
                 # Combine frames horizontally
-                combined = cv.hconcat([frame_left, frame_right])
+                combined = cv.hconcat([f_left, f_right])
                 cv.imshow('stereo', combined)
+
+
+
 
                 # Optionally display timing info
                 print(f"Timestamp diff: {dt * 1000:.2f} ms")
