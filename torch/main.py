@@ -47,22 +47,6 @@ def plot_detections(img, detections, with_keypoints=True):
     plt.show()
 
 
-def load_front_net():
-    # will resolve to use cpu bc I'm on a mac lol but maybe one day I;ll re-use this code!
-    gpu = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    front_net = BlazeFace().to(gpu)
-    front_net.load_weights("blazeface.pth")
-    front_net.load_anchors("anchors.npy")
-
-    # back_net = BlazeFace(back_model=True).to(gpu)
-    # back_net.load_weights("blazefaceback.pth")
-    # back_net.load_anchors("anchorsback.npy")
-
-    # thresholds
-    front_net.min_score_thresh = 0.75
-    front_net.min_suppression_threshold = 0.3
-
-
 # Shared frames and timestamps
 frame_left, frame_right = None, None
 ts_left, ts_right = 0.0, 0.0
@@ -93,6 +77,21 @@ def capture(cam, side):
 
 def main():
     print("PyTorch version:", torch.__version__)
+
+    gpu = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    front_net = BlazeFace().to(gpu)
+    front_net.load_weights("blazeface.pth")
+    front_net.load_anchors("anchors.npy")
+
+    # back_net = BlazeFace(back_model=True).to(gpu)
+    # back_net.load_weights("blazefaceback.pth")
+    # back_net.load_anchors("anchorsback.npy")
+
+    # thresholds
+    front_net.min_score_thresh = 0.75
+    front_net.min_suppression_threshold = 0.3
+
+
     global running
 
     left = cv.VideoCapture(0); left.set(cv.CAP_PROP_BUFFERSIZE, 1)
@@ -118,13 +117,21 @@ def main():
 
                 f_left = cv.cvtColor(frame_left, cv.COLOR_BGR2RGB)
                 f_right = cv.cvtColor(frame_right, cv.COLOR_BGR2RGB)
-                
+
+                img_batch = np.vstack((np.expand_dims(cv.resize(f_left, (128,128)),0), np.expand_dims(cv.resize(f_right, (128,128)),0)))
+                print(img_batch.shape)
+               
+                front_detections = front_net.predict_on_batch(img_batch)
+                print("LEFT", front_detections[0])
+                print("RIGHT", front_detections[1])
+
                 # Combine frames horizontally
-                combined = cv.hconcat([f_left, f_right])
-                cv.imshow('stereo', combined)
-
-
-
+                # combined = cv.hconcat([f_left, f_right])
+                # cv.imshow('stereo', combined)
+                
+                plot_detections(f_left, front_detections[0])
+                plot_detections(f_right, front_detections[1])
+                break
 
                 # Optionally display timing info
                 print(f"Timestamp diff: {dt * 1000:.2f} ms")
