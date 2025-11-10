@@ -82,9 +82,8 @@ def capture(cam, side):
 
     cam.release()
 
-def main():
-    print("PyTorch version:", torch.__version__)
 
+def init_front():
     gpu = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     front_net = BlazeFace().to(gpu)
     front_net.load_weights("blazeface.pth")
@@ -97,8 +96,13 @@ def main():
     # thresholds
     front_net.min_score_thresh = 0.75
     front_net.min_suppression_threshold = 0.3
+    return front_net
 
 
+def main():
+    print("PyTorch version:", torch.__version__)
+    
+    front_net = init_front()
     global running
 
     left = cv.VideoCapture(0); left.set(cv.CAP_PROP_BUFFERSIZE, 1)
