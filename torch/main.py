@@ -11,6 +11,13 @@ import time
 # model
 from blazeface import BlazeFace
 
+
+def warmup_camera(cam, frames=10):
+    for _ in range(frames):
+        cam.read()
+    time.sleep(0.5)  # let exposure stabilize a bit more
+
+
 def plot_detections(img, detections, with_keypoints=True):
     fig, ax = plt.subplots(1, figsize=(10, 10))
     ax.grid(False)
@@ -101,6 +108,9 @@ def main():
     if not right.isOpened() or not left.isOpened():
         print("Cannot open camera")
         return
+
+    warmup_camera(left)
+    warmup_camera(right)
 
     # Start parallel capture threads
     t_right = threading.Thread(target=capture, args=(right, 'right'), daemon=True)
