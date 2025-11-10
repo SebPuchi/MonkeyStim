@@ -94,7 +94,7 @@ def init_front():
     # back_net.load_anchors("anchorsback.npy")
 
     # thresholds
-    front_net.min_score_thresh = 0.75
+    front_net.min_score_thresh = 0.80
     front_net.min_suppression_threshold = 0.3
     return front_net
 
