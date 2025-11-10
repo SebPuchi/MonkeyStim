@@ -1,9 +1,15 @@
 import numpy as np
 import torch
-import cv2
+import cv2 as cv
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+
+import threading
+import time
+
+# model
+from blazeface import BlazeFace
 
 def plot_detections(img, detections, with_keypoints=True):
     fig, ax = plt.subplots(1, figsize=(10, 10))
@@ -41,9 +47,86 @@ def plot_detections(img, detections, with_keypoints=True):
     plt.show()
 
 
+def load_front_net():
+    # will resolve to use cpu bc I'm on a mac lol but maybe one day I;ll re-use this code!
+    gpu = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    front_net = BlazeFace().to(gpu)
+    front_net.load_weights("blazeface.pth")
+    front_net.load_anchors("anchors.npy")
+
+    # back_net = BlazeFace(back_model=True).to(gpu)
+    # back_net.load_weights("blazefaceback.pth")
+    # back_net.load_anchors("anchorsback.npy")
+
+    # thresholds
+    front_net.min_score_thresh = 0.75
+    front_net.min_suppression_threshold = 0.3
+
+
+# Shared frames and timestamps
+frame_left, frame_right = None, None
+ts_left, ts_right = 0.0, 0.0
+lock = threading.Lock()
+running = True
+
+def capture(cam, side):
+    """Capture frames from one camera in a separate thread."""
+    global frame_left, frame_right, ts_left, ts_right, running
+
+    while running:
+        ret, frame = cam.read()
+        if not ret:
+            print(f"[{side}] Can't receive frame. Exiting thread...")
+            break
+
+        timestamp = time.time()  # seconds since epoch (high precision)
+
+        with lock:  # ensure safe updates
+            if side == 'left':
+                frame_left = frame
+                ts_left = timestamp
+            else:
+                frame_right = frame
+                ts_right = timestamp
+
+    cam.release()
+
 def main():
     print("PyTorch version:", torch.__version__)
-    pass
+    global running
 
-if __name__ == '__main__':
+    left = cv.VideoCapture(0); left.set(cv.CAP_PROP_BUFFERSIZE, 1)
+    right = cv.VideoCapture(1); right.set(cv.CAP_PROP_BUFFERSIZE, 1)
+
+
+    if not right.isOpened() or not left.isOpened():
+        print("Cannot open camera")
+        return
+
+    # Start parallel capture threads
+    t_right = threading.Thread(target=capture, args=(right, 'right'), daemon=True)
+    t_left = threading.Thread(target=capture, args=(left, 'left'), daemon=True)
+    t_right.start()
+    t_left.start()
+
+    while True:
+        with lock:
+            if frame_left is not None and frame_right is not None:
+                # Compute time difference
+                dt = abs(ts_left - ts_right)
+
+                # Combine frames horizontally
+                combined = cv.hconcat([frame_left, frame_right])
+                cv.imshow('stereo', combined)
+
+                # Optionally display timing info
+                print(f"Timestamp diff: {dt * 1000:.2f} ms")
+
+        if cv.waitKey(1) == ord('q'):
+            running = False
+            break
+
+    cv.destroyAllWindows()
+
+if __name__ == "__main__":
     main()
