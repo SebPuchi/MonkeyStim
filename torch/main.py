@@ -10,8 +10,7 @@ import time
 
 import serial
 import serial.tools.list_ports
-import keyboard
-
+from pynput import keyboard
 
 # model
 from blazeface import BlazeFace
@@ -32,7 +31,6 @@ def plot_cv(img, detections, with_keypoints=True):
     if detections.ndim == 1:
         detections = np.expand_dims(detections, axis=0)
     
-    print("Found %d faces" % detections.shape[0])
     
     img_height, img_width = img.shape[:2]
     
@@ -168,6 +166,7 @@ def init_arduino():
         exit()
     return arduino
 
+
 def main():
     print("PyTorch version:", torch.__version__)
 
@@ -186,8 +185,41 @@ def main():
         print("Cannot open camera")
         return
 
+    # warm ups
     warmup_camera(left)
     warmup_camera(right)
+
+
+    def on_press(key):
+        global running
+        try:
+            # Handle regular character keys
+            if hasattr(key, 'char') and key.char:
+                if key.char == 'w':
+                    arduino.write(b'w')
+                    print("Sent: W (Forward)")
+                elif key.char == 's':
+                    arduino.write(b's')
+                    print("Sent: S (Backward)")
+                elif key.char == 'a':
+                    arduino.write(b'a')
+                    print("Sent: A (Left)")
+                elif key.char == 'd':
+                    arduino.write(b'd')
+                    print("Sent: D (Right)")
+                elif key.char == 'x':
+                    arduino.write(b'x')
+                    print("Sent: X (STOP)")
+        except AttributeError:
+            # Handle special keys like ESC
+            if key == keyboard.Key.esc:
+                print("\nExiting...")
+                running = False
+                return False  # Stop listener
+    
+    # init keyboard listener:
+    listener = keyboard.Listener(on_press=on_press)
+    listener.start()
 
     # Start parallel capture threads
     t_right = threading.Thread(target=capture, args=(right, "right"), daemon=True)
@@ -195,7 +227,7 @@ def main():
     t_right.start()
     t_left.start()
 
-    while True:
+    while running:
         with lock:
             if frame_left is not None and frame_right is not None:
                 # Compute time difference
@@ -222,11 +254,13 @@ def main():
                 combined = cv.hconcat([f_left, f_right])
                 cv.imshow("stereo", combined)
                 
+
                 
         if cv.waitKey(1) == ord("q"):
             running = False
             break
-
+    listener.stop()
+    arduino.close()
     cv.destroyAllWindows()
 
 
