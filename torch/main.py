@@ -188,6 +188,9 @@ def main():
                 plot_cv(f_left, front_detections[0])
                 plot_cv(f_right, front_detections[1])
 
+                f_left = cv.cvtColor(f_left, cv.COLOR_RGB2BGR)
+                f_right = cv.cvtColor(f_right, cv.COLOR_RGB2BGR)
+
                 # Combine frames horizontally
                 combined = cv.hconcat([f_left, f_right])
                 cv.imshow("stereo", combined)
