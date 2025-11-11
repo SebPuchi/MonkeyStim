@@ -8,9 +8,17 @@ import matplotlib.patches as patches
 import threading
 import time
 
+import serial
+import serial.tools.list_ports
+import keyboard
+
+
 # model
 from blazeface import BlazeFace
 
+# Arduino Ports
+ARDUINO_PORT = '/dev/cu.usbmodem13101'
+BAUD_RATE = 9600
 
 def warmup_camera(cam, frames=10):
     for _ in range(frames):
@@ -144,10 +152,29 @@ def init_front():
     return front_net
 
 
+def init_arduino():
+    ports = serial.tools.list_ports.comports()
+    print(ports)
+    for index, value in enumerate(sorted(ports)):
+        print(index, '\t', value.name, '\t', value.manufacturer)
+
+    try:
+        arduino = serial.Serial(ARDUINO_PORT, BAUD_RATE, timeout=1)
+        time.sleep(2)  # Wait for Arduino to reset
+        print("Connected to Arduino!")
+    except:
+        print(f"Error: Could not connect to Arduino on {ARDUINO_PORT}")
+        print("Make sure the port is correct and Arduino is connected.")
+        exit()
+    return arduino
+
 def main():
     print("PyTorch version:", torch.__version__)
 
     front_net = init_front()
+    arduino = init_arduino()
+
+
     global running
 
     left = cv.VideoCapture(0)
@@ -194,10 +221,8 @@ def main():
                 # Combine frames horizontally
                 combined = cv.hconcat([f_left, f_right])
                 cv.imshow("stereo", combined)
-
-                # Optionally display timing info
-                # print(f"Timestamp diff: {dt * 1000:.2f} ms")
-
+                
+                
         if cv.waitKey(1) == ord("q"):
             running = False
             break
