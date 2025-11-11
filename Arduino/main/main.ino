@@ -11,11 +11,15 @@
 #define stepPin_two 10
 #define dirPin_two 11
 
-long stepIncrement = 2000; // Adjust this value as needed
+long stepIncrement = 200; // Adjust this value as needed
 
 // stepper accel objs
 AccelStepper stepper_one(AccelStepper::DRIVER, stepPin_one, dirPin_one);
 AccelStepper stepper_two(AccelStepper::DRIVER, stepPin_two, dirPin_two);
+
+float speed_one = 0;
+float speed_two = 0;
+float baseSpeed = 5000; // steps per second
 
 void setup() {
   // Setup serial for debugging
@@ -45,7 +49,7 @@ void setup() {
   stepper_two.setMaxSpeed(10000);
   stepper_two.setAcceleration(5000);
   stepper_two.setCurrentPosition(0);
-  
+ 
   
   Serial.println("Stepper two initialized");  
     
@@ -54,43 +58,47 @@ void setup() {
 void loop() {
   if (Serial.available() > 0) {
     char key = Serial.read();
-    
-    
-    switch(key) {
+
+    switch (key) {
       case 'w':
       case 'W':
-        // Up arrow - move stepper one forward
-        stepper_one.move(stepIncrement);
+        speed_one = baseSpeed;   // move forward
         Serial.println("Stepper one: UP");
         break;
-        
+
       case 's':
       case 'S':
-        // Down arrow - move stepper one backward
-        stepper_one.move(-stepIncrement);
+        speed_one = -baseSpeed;  // move backward
         Serial.println("Stepper one: DOWN");
         break;
-        
+
       case 'a':
       case 'A':
-        // Left arrow - move stepper two backward
-        stepper_two.move(-stepIncrement);
+        speed_two = -baseSpeed;  // move left
         Serial.println("Stepper two: LEFT");
         break;
-        
+
       case 'd':
       case 'D':
-        // Right arrow - move stepper two forward
-        stepper_two.move(stepIncrement);
+        speed_two = baseSpeed;   // move right
         Serial.println("Stepper two: RIGHT");
+        break;
+
+      case 'x':
+      case 'X':
+        // stop both
+        speed_one = 0;
+        speed_two = 0;
+        Serial.println("STOP");
         break;
     }
   }
-  
-  // Run both steppers
-  stepper_one.run();
-  stepper_two.run();
 
+  // Update speeds
+  stepper_one.setSpeed(speed_one);
+  stepper_two.setSpeed(speed_two);
 
-
+  // Run both at constant speed
+  stepper_one.runSpeed();
+  stepper_two.runSpeed();
 }
